@@ -12,7 +12,7 @@ Ext.define('PBS.form.DriveSelector', {
     store: {
 	proxy: {
 	    type: 'proxmox',
-	    url: '/api2/json/tape/drive',
+	    url: '/api2/json/cloud/drive',
 	},
 	autoLoad: true,
 	sorters: 'name',

@@ -1,4 +1,4 @@
-Ext.define('PBS.TapeManagement.AllocationStore', {
+Ext.define('PBS.CloudManagement.AllocationStore', {
     extend: 'Ext.data.Store',
     alias: 'store.allocationCalendarEventStore',
 
@@ -20,7 +20,7 @@ Ext.define('PBS.TapeManagement.AllocationStore', {
     ],
 });
 
-Ext.define('PBS.TapeManagement.AllocationSelector', {
+Ext.define('PBS.CloudManagement.AllocationSelector', {
     extend: 'PBS.form.CalendarEvent',
     alias: 'widget.pbsAllocationSelector',
 

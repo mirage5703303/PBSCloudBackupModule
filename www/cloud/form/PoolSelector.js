@@ -1,4 +1,4 @@
-Ext.define('PBS.TapeManagement.PoolSelector', {
+Ext.define('PBS.CloudManagement.PoolSelector', {
     extend: 'Proxmox.form.ComboGrid',
     alias: 'widget.pbsMediaPoolSelector',
 

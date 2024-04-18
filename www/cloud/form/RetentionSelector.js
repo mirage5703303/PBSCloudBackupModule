@@ -1,4 +1,4 @@
-Ext.define('PBS.TapeManagement.RetentionStore', {
+Ext.define('PBS.CloudManagement.RetentionStore', {
     extend: 'Ext.data.Store',
     alias: 'store.retentionCalendarEventStore',
 
@@ -15,7 +15,7 @@ Ext.define('PBS.TapeManagement.RetentionStore', {
     ],
 });
 
-Ext.define('PBS.TapeManagement.RetentionSelector', {
+Ext.define('PBS.CloudManagement.RetentionSelector', {
     extend: 'PBS.form.CalendarEvent',
     alias: 'widget.pbsRetentionSelector',
 

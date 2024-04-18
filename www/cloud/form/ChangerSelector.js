@@ -12,7 +12,7 @@ Ext.define('PBS.form.ChangerSelector', {
     store: {
 	proxy: {
 	    type: 'proxmox',
-	    url: '/api2/json/tape/changer',
+	    url: '/api2/json/cloud/changer',
 	},
 	autoLoad: true,
 	sorter: 'name',

@@ -1,6 +1,6 @@
-Ext.define('PBS.form.TapeKeySelector', {
+Ext.define('PBS.form.CloudKeySelector', {
     extend: 'Proxmox.form.ComboGrid',
-    alias: 'widget.pbsTapeKeySelector',
+    alias: 'widget.pbsCloudKeySelector',
 
     allowBlank: false,
     displayField: 'hint',
@@ -12,7 +12,7 @@ Ext.define('PBS.form.TapeKeySelector', {
     store: {
 	proxy: {
 	    type: 'proxmox',
-	    url: '/api2/json/config/tape-encryption-keys',
+	    url: '/api2/json/config/cloud-encryption-keys',
 	},
 	autoLoad: true,
 	sorter: 'hint',

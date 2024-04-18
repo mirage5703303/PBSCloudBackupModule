@@ -1,6 +1,6 @@
-Ext.define('PBS.form.TapeDevicePathSelector', {
+Ext.define('PBS.form.CloudDevicePathSelector', {
     extend: 'Proxmox.form.ComboGrid',
-    alias: 'widget.pbsTapeDevicePathSelector',
+    alias: 'widget.pbsCloudDevicePathSelector',
 
     allowBlank: false,
     displayField: 'path',
@@ -48,7 +48,7 @@ Ext.define('PBS.form.TapeDevicePathSelector', {
 	    throw `invalid type '${me.type}'`;
 	}
 
-	let url = `/api2/json/tape/scan-${me.type}`;
+	let url = `/api2/json/cloud/scan-${me.type}`;
 	me.store = {
 	    proxy: {
 		type: 'proxmox',
