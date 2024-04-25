@@ -1,4 +1,4 @@
-Ext.define('PBS.TapeManagement.ChangerEditWindow', {
+Ext.define('PBS.CloudManagement.ChangerEditWindow', {
     extend: 'Proxmox.window.Edit',
     alias: 'widget.pbsChangerEditWindow',
     mixins: ['Proxmox.Mixin.CBind'],
@@ -32,7 +32,7 @@ Ext.define('PBS.TapeManagement.ChangerEditWindow', {
 	},
 	{
 	    fieldLabel: gettext('Path'),
-	    xtype: 'pbsTapeDevicePathSelector',
+	    xtype: 'pbsCloudDevicePathSelector',
 	    type: 'changers',
 	    name: 'path',
 	    allowBlank: false,

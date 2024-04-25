@@ -1,4 +1,4 @@
-Ext.define('PBS.TapeManagement.DriveEditWindow', {
+Ext.define('PBS.CloudManagement.DriveEditWindow', {
     extend: 'Proxmox.window.Edit',
     alias: 'widget.pbsDriveEditWindow',
     mixins: ['Proxmox.Mixin.CBind'],
@@ -67,7 +67,7 @@ Ext.define('PBS.TapeManagement.DriveEditWindow', {
 	},
 	{
 	    fieldLabel: gettext('Path'),
-	    xtype: 'pbsTapeDevicePathSelector',
+	    xtype: 'pbsCloudDevicePathSelector',
 	    type: 'drives',
 	    name: 'path',
 	    allowBlank: false,
