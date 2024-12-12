@@ -12,73 +12,21 @@ const_regex! {
     pub ACL_PATH_REGEX = concat!(r"^(?:/|", r"(?:/", PROXMOX_SAFE_ID_REGEX_STR!(), ")+", r")$");
 }
 
-// define Privilege bitfield
+// Define Privilege bitfield for Cloud Backup
 
 constnamedbitmap! {
-    /// Contains a list of privilege name to privilege value mappings.
-    ///
-    /// The names are used when displaying/persisting privileges anywhere, the values are used to
-    /// allow easy matching of privileges as bitflags.
+    /// Contains a list of privilege name to privilege value mappings for cloud backups.
     PRIVILEGES: u64 => {
-        /// Sys.Audit allows knowing about the system and its status
-        PRIV_SYS_AUDIT("Sys.Audit");
-        /// Sys.Modify allows modifying system-level configuration
-        PRIV_SYS_MODIFY("Sys.Modify");
-        /// Sys.Modify allows to poweroff/reboot/.. the system
-        PRIV_SYS_POWER_MANAGEMENT("Sys.PowerManagement");
-
-        /// Datastore.Audit allows knowing about a datastore,
-        /// including reading the configuration entry and listing its contents
-        PRIV_DATASTORE_AUDIT("Datastore.Audit");
-        /// Datastore.Allocate allows creating or deleting datastores
-        PRIV_DATASTORE_ALLOCATE("Datastore.Allocate");
-        /// Datastore.Modify allows modifying a datastore and its contents
-        PRIV_DATASTORE_MODIFY("Datastore.Modify");
-        /// Datastore.Read allows reading arbitrary backup contents
-        PRIV_DATASTORE_READ("Datastore.Read");
-        /// Allows verifying a datastore
-        PRIV_DATASTORE_VERIFY("Datastore.Verify");
-
-        /// Datastore.Backup allows Datastore.Read|Verify and creating new snapshots,
-        /// but also requires backup ownership
-        PRIV_DATASTORE_BACKUP("Datastore.Backup");
-        /// Datastore.Prune allows deleting snapshots,
-        /// but also requires backup ownership
-        PRIV_DATASTORE_PRUNE("Datastore.Prune");
-
-        /// Permissions.Modify allows modifying ACLs
-        PRIV_PERMISSIONS_MODIFY("Permissions.Modify");
-
-        /// Remote.Audit allows reading remote.cfg and sync.cfg entries
-        PRIV_REMOTE_AUDIT("Remote.Audit");
-        /// Remote.Modify allows modifying remote.cfg
-        PRIV_REMOTE_MODIFY("Remote.Modify");
-        /// Remote.Read allows reading data from a configured `Remote`
-        PRIV_REMOTE_READ("Remote.Read");
-
-        /// Sys.Console allows access to the system's console
-        PRIV_SYS_CONSOLE("Sys.Console");
-
-        /// Tape.Audit allows reading tape backup configuration and status
-        PRIV_TAPE_AUDIT("Tape.Audit");
-        /// Tape.Modify allows modifying tape backup configuration
-        PRIV_TAPE_MODIFY("Tape.Modify");
-        /// Tape.Write allows writing tape media
-        PRIV_TAPE_WRITE("Tape.Write");
-        /// Tape.Read allows reading tape backup configuration and media contents
-        PRIV_TAPE_READ("Tape.Read");
-
-        /// Cloud.Audit allows reading tape backup configuration and status
+        /// Cloud.Audit allows reading cloud backup configuration and status
         PRIV_CLOUD_AUDIT("Cloud.Audit");
-        /// Cloud.Modify allows modifying tape backup configuration
+        /// Cloud.Modify allows modifying cloud backup configuration
         PRIV_CLOUD_MODIFY("Cloud.Modify");
-        /// Cloud.Write allows writing tape media
-        PRIV_CLOUD_WRITE("Cloud.Write");
-        /// Cloud.Read allows reading tape backup configuration and media contents
-        PRIV_CLOUD_READ("Cloud.Read");
-
-        /// Realm.Allocate allows viewing, creating, modifying and deleting realms
-        PRIV_REALM_ALLOCATE("Realm.Allocate");
+        /// Cloud.Backup allows creating new backups in the cloud
+        PRIV_CLOUD_BACKUP("Cloud.Backup");
+        /// Cloud.Restore allows restoring backups from the cloud
+        PRIV_CLOUD_RESTORE("Cloud.Restore");
+        /// Cloud.Delete allows deleting backups from the cloud
+        PRIV_CLOUD_DELETE("Cloud.Delete");
     }
 }
 
@@ -93,8 +41,7 @@ pub fn privs_to_priv_names(privs: u64) -> Vec<&'static str> {
         })
 }
 
-/// Admin always has all privileges. It can do everything except a few actions
-/// which are limited to the 'root@pam` superuser
+/// Admin always has all privileges.
 pub const ROLE_ADMIN: u64 = u64::MAX;
 
 /// NoAccess can be used to remove privileges from specific (sub-)paths
@@ -102,143 +49,44 @@ pub const ROLE_NO_ACCESS: u64 = 0;
 
 #[rustfmt::skip]
 #[allow(clippy::identity_op)]
-/// Audit can view configuration and status information, but not modify it.
-pub const ROLE_AUDIT: u64 = 0
-    | PRIV_SYS_AUDIT
-    | PRIV_DATASTORE_AUDIT;
+/// Cloud.Audit can view cloud backup configuration and status information, but not modify it.
+pub const ROLE_CLOUD_AUDIT: u64 = 0
+    | PRIV_CLOUD_AUDIT;
 
 #[rustfmt::skip]
 #[allow(clippy::identity_op)]
-/// Datastore.Admin can do anything on the datastore.
-pub const ROLE_DATASTORE_ADMIN: u64 = 0
-    | PRIV_DATASTORE_AUDIT
-    | PRIV_DATASTORE_MODIFY
-    | PRIV_DATASTORE_READ
-    | PRIV_DATASTORE_VERIFY
-    | PRIV_DATASTORE_BACKUP
-    | PRIV_DATASTORE_PRUNE;
+/// Cloud.Admin can do anything on the cloud backup.
+pub const ROLE_CLOUD_ADMIN: u64 = 0
+    | PRIV_CLOUD_AUDIT
+    | PRIV_CLOUD_MODIFY
+    | PRIV_CLOUD_BACKUP
+    | PRIV_CLOUD_RESTORE
+    | PRIV_CLOUD_DELETE;
 
 #[rustfmt::skip]
 #[allow(clippy::identity_op)]
-/// Datastore.Reader can read/verify datastore content and do restore
-pub const ROLE_DATASTORE_READER: u64 = 0
-    | PRIV_DATASTORE_AUDIT
-    | PRIV_DATASTORE_VERIFY
-    | PRIV_DATASTORE_READ;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Datastore.Backup can do backup and restore, but no prune.
-pub const ROLE_DATASTORE_BACKUP: u64 = 0
-    | PRIV_DATASTORE_BACKUP;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Datastore.PowerUser can do backup, restore, and prune.
-pub const ROLE_DATASTORE_POWERUSER: u64 = 0
-    | PRIV_DATASTORE_PRUNE
-    | PRIV_DATASTORE_BACKUP;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Datastore.Audit can audit the datastore.
-pub const ROLE_DATASTORE_AUDIT: u64 = 0
-    | PRIV_DATASTORE_AUDIT;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Remote.Audit can audit the remote
-pub const ROLE_REMOTE_AUDIT: u64 = 0
-    | PRIV_REMOTE_AUDIT;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Remote.Admin can do anything on the remote.
-pub const ROLE_REMOTE_ADMIN: u64 = 0
-    | PRIV_REMOTE_AUDIT
-    | PRIV_REMOTE_MODIFY
-    | PRIV_REMOTE_READ;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Remote.SyncOperator can do read and prune on the remote.
-pub const ROLE_REMOTE_SYNC_OPERATOR: u64 = 0
-    | PRIV_REMOTE_AUDIT
-    | PRIV_REMOTE_READ;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Tape.Audit can audit the tape backup configuration and media content
-pub const ROLE_TAPE_AUDIT: u64 = 0
-    | PRIV_TAPE_AUDIT;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Tape.Admin can do anything on the tape backup
-pub const ROLE_TAPE_ADMIN: u64 = 0
-    | PRIV_TAPE_AUDIT
-    | PRIV_TAPE_MODIFY
-    | PRIV_TAPE_READ
-    | PRIV_TAPE_WRITE;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Tape.Operator can do tape backup and restore (but no configuration changes)
-pub const ROLE_TAPE_OPERATOR: u64 = 0
-    | PRIV_TAPE_AUDIT
-    | PRIV_TAPE_READ
-    | PRIV_TAPE_WRITE;
-
-#[rustfmt::skip]
-#[allow(clippy::identity_op)]
-/// Tape.Reader can do read and inspect tape content
-pub const ROLE_TAPE_READER: u64 = 0
-    | PRIV_TAPE_AUDIT
-    | PRIV_TAPE_READ;
-
-/// NoAccess can be used to remove privileges from specific (sub-)paths
-pub const ROLE_NAME_NO_ACCESS: &str = "NoAccess";
+/// Cloud.User can perform backup and restore operations.
+pub const ROLE_CLOUD_USER: u64 = 0
+    | PRIV_CLOUD_BACKUP
+    | PRIV_CLOUD_RESTORE;
 
 #[api(
     type_text: "<role>",
 )]
 #[repr(u64)]
 #[derive(Serialize, Deserialize)]
-/// Enum representing roles via their [PRIVILEGES] combination.
-///
-/// Since privileges are implemented as bitflags, each unique combination of privileges maps to a
-/// single, unique `u64` value that is used in this enum definition.
+/// Enum representing roles via their [PRIVILEGES] combination for cloud backups.
 pub enum Role {
     /// Administrator
     Admin = ROLE_ADMIN,
-    /// Auditor
-    Audit = ROLE_AUDIT,
     /// Disable Access
     NoAccess = ROLE_NO_ACCESS,
-    /// Datastore Administrator
-    DatastoreAdmin = ROLE_DATASTORE_ADMIN,
-    /// Datastore Reader (inspect datastore content and do restores)
-    DatastoreReader = ROLE_DATASTORE_READER,
-    /// Datastore Backup (backup and restore owned backups)
-    DatastoreBackup = ROLE_DATASTORE_BACKUP,
-    /// Datastore PowerUser (backup, restore and prune owned backup)
-    DatastorePowerUser = ROLE_DATASTORE_POWERUSER,
-    /// Datastore Auditor
-    DatastoreAudit = ROLE_DATASTORE_AUDIT,
-    /// Remote Auditor
-    RemoteAudit = ROLE_REMOTE_AUDIT,
-    /// Remote Administrator
-    RemoteAdmin = ROLE_REMOTE_ADMIN,
-    /// Syncronisation Opertator
-    RemoteSyncOperator = ROLE_REMOTE_SYNC_OPERATOR,
-    /// Tape Auditor
-    TapeAudit = ROLE_TAPE_AUDIT,
-    /// Tape Administrator
-    TapeAdmin = ROLE_TAPE_ADMIN,
-    /// Tape Operator
-    TapeOperator = ROLE_TAPE_OPERATOR,
-    /// Tape Reader
-    TapeReader = ROLE_TAPE_READER,
+    /// Cloud Auditor
+    CloudAudit = ROLE_CLOUD_AUDIT,
+    /// Cloud Administrator
+    CloudAdmin = ROLE_CLOUD_ADMIN,
+    /// Cloud User (perform backups and restores)
+    CloudUser = ROLE_CLOUD_USER,
 }
 
 impl FromStr for Role {
@@ -274,23 +122,23 @@ pub const ACL_UGID_TYPE_SCHEMA: Schema = StringSchema::new("Type of 'ugid' prope
         propagate: {
             schema: ACL_PROPAGATE_SCHEMA,
         },
-	path: {
+        path: {
             schema: ACL_PATH_SCHEMA,
         },
         ugid_type: {
             schema: ACL_UGID_TYPE_SCHEMA,
         },
-	ugid: {
+        ugid: {
             type: String,
             description: "User or Group ID.",
         },
-	roleid: {
+        roleid: {
             type: Role,
         }
     }
 )]
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-/// ACL list entry.
+/// ACL list entry for cloud backup.
 pub struct AclListItem {
     pub path: String,
     pub ugid: String,
