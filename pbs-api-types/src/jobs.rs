@@ -15,26 +15,26 @@ use crate::{
 
 const_regex! {
 
-    /// Regex for verification jobs 'DATASTORE:ACTUAL_JOB_ID'
-    pub VERIFICATION_JOB_WORKER_ID_REGEX = concat!(r"^(", PROXMOX_SAFE_ID_REGEX_STR!(), r"):");
-    /// Regex for sync jobs '(REMOTE|\-):REMOTE_DATASTORE:LOCAL_DATASTORE:(?:LOCAL_NS_ANCHOR:)ACTUAL_JOB_ID'
-    pub SYNC_JOB_WORKER_ID_REGEX = concat!(r"^(", PROXMOX_SAFE_ID_REGEX_STR!(), r"|\-):(", PROXMOX_SAFE_ID_REGEX_STR!(), r"):(", PROXMOX_SAFE_ID_REGEX_STR!(), r")(?::(", BACKUP_NS_RE!(), r"))?:");
+    /// Regex for verification jobs 'CLOUD_DATASTORE:ACTUAL_JOB_ID'
+    pub CLOUD_VERIFICATION_JOB_WORKER_ID_REGEX = concat!(r"^(", PROXMOX_SAFE_ID_REGEX_STR!(), r"):");
+    /// Regex for sync jobs '(REMOTE|\-):REMOTE_CLOUD_DATASTORE:LOCAL_CLOUD_DATASTORE:(?:LOCAL_NS_ANCHOR:)ACTUAL_JOB_ID'
+    pub CLOUD_SYNC_JOB_WORKER_ID_REGEX = concat!(r"^(", PROXMOX_SAFE_ID_REGEX_STR!(), r"|\-):(", PROXMOX_SAFE_ID_REGEX_STR!(), r"):(", PROXMOX_SAFE_ID_REGEX_STR!(), r")(?::(", BACKUP_NS_RE!(), r"))?:");
 }
 
-pub const JOB_ID_SCHEMA: Schema = StringSchema::new("Job ID.")
+pub const CLOUD_JOB_ID_SCHEMA: Schema = StringSchema::new("Cloud Job ID.")
     .format(&PROXMOX_SAFE_ID_FORMAT)
     .min_length(3)
     .max_length(32)
     .schema();
 
-pub const SYNC_SCHEDULE_SCHEMA: Schema = StringSchema::new("Run sync job at specified schedule.")
+pub const CLOUD_SYNC_SCHEDULE_SCHEMA: Schema = StringSchema::new("Run cloud sync job at specified schedule.")
     .format(&ApiStringFormat::VerifyFn(
         proxmox_time::verify_calendar_event,
     ))
     .type_text("<calendar-event>")
     .schema();
 
-pub const GC_SCHEDULE_SCHEMA: Schema =
+pub const CLOUD_GC_SCHEDULE_SCHEMA: Schema =
     StringSchema::new("Run garbage collection job at specified schedule.")
         .format(&ApiStringFormat::VerifyFn(
             proxmox_time::verify_calendar_event,
@@ -42,14 +42,14 @@ pub const GC_SCHEDULE_SCHEMA: Schema =
         .type_text("<calendar-event>")
         .schema();
 
-pub const PRUNE_SCHEDULE_SCHEMA: Schema = StringSchema::new("Run prune job at specified schedule.")
+pub const CLOUD_PRUNE_SCHEDULE_SCHEMA: Schema = StringSchema::new("Run prune job at specified schedule.")
     .format(&ApiStringFormat::VerifyFn(
         proxmox_time::verify_calendar_event,
     ))
     .type_text("<calendar-event>")
     .schema();
 
-pub const VERIFICATION_SCHEDULE_SCHEMA: Schema =
+pub const CLOUD_VERIFICATION_SCHEDULE_SCHEMA: Schema =
     StringSchema::new("Run verify job at specified schedule.")
         .format(&ApiStringFormat::VerifyFn(
             proxmox_time::verify_calendar_event,
@@ -57,8 +57,8 @@ pub const VERIFICATION_SCHEDULE_SCHEMA: Schema =
         .type_text("<calendar-event>")
         .schema();
 
-pub const REMOVE_VANISHED_BACKUPS_SCHEMA: Schema = BooleanSchema::new(
-    "Delete vanished backups. This remove the local copy if the remote backup was deleted.",
+pub const REMOVE_VANISHED_CLOUD_BACKUPS_SCHEMA: Schema = BooleanSchema::new(
+    "Delete vanished cloud backups. This removes the local copy if the remote backup was deleted.",
 )
 .default(false)
 .schema();
@@ -81,7 +81,7 @@ pub const REMOVE_VANISHED_BACKUPS_SCHEMA: Schema = BooleanSchema::new(
             type: String,
         },
         "last-run-endtime": {
-            description: "Endtime of the last run.",
+            description: "End time of the last run.",
             optional: true,
             type: Integer,
         },
@@ -89,8 +89,8 @@ pub const REMOVE_VANISHED_BACKUPS_SCHEMA: Schema = BooleanSchema::new(
 )]
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-/// Job Scheduling Status
-pub struct JobScheduleStatus {
+/// Cloud Job Scheduling Status
+pub struct CloudJobScheduleStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_run: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -104,8 +104,8 @@ pub struct JobScheduleStatus {
 #[api()]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-/// When do we send notifications
-pub enum Notify {
+/// When to send notifications for cloud jobs
+pub enum CloudNotify {
     /// Never send notification
     Never,
     /// Send notifications for failed and successful jobs
@@ -117,74 +117,74 @@ pub enum Notify {
 #[api(
     properties: {
         gc: {
-            type: Notify,
+            type: CloudNotify,
             optional: true,
         },
         verify: {
-            type: Notify,
+            type: CloudNotify,
             optional: true,
         },
         sync: {
-            type: Notify,
+            type: CloudNotify,
             optional: true,
         },
         prune: {
-            type: Notify,
+            type: CloudNotify,
             optional: true,
         },
     },
 )]
 #[derive(Debug, Serialize, Deserialize)]
-/// Datastore notify settings
-pub struct DatastoreNotify {
+/// Cloud Datastore notify settings
+pub struct CloudDatastoreNotify {
     /// Garbage collection settings
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub gc: Option<Notify>,
+    pub gc: Option<CloudNotify>,
     /// Verify job setting
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub verify: Option<Notify>,
+    pub verify: Option<CloudNotify>,
     /// Sync job setting
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sync: Option<Notify>,
+    pub sync: Option<CloudNotify>,
     /// Prune job setting
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub prune: Option<Notify>,
+    pub prune: Option<CloudNotify>,
 }
 
-pub const DATASTORE_NOTIFY_STRING_SCHEMA: Schema = StringSchema::new(
-    "Datastore notification setting, enum can be one of 'always', 'never', or 'error'.",
+pub const CLOUD_DATASTORE_NOTIFY_STRING_SCHEMA: Schema = StringSchema::new(
+    "Cloud datastore notification setting, enum can be one of 'always', 'never', or 'error'.",
 )
 .format(&ApiStringFormat::PropertyString(
-    &DatastoreNotify::API_SCHEMA,
+    &CloudDatastoreNotify::API_SCHEMA,
 ))
 .schema();
 
-pub const IGNORE_VERIFIED_BACKUPS_SCHEMA: Schema = BooleanSchema::new(
-    "Do not verify backups that are already verified if their verification is not outdated.",
+pub const IGNORE_VERIFIED_CLOUD_BACKUPS_SCHEMA: Schema = BooleanSchema::new(
+    "Do not verify cloud backups that are already verified if their verification is not outdated.",
 )
 .default(true)
 .schema();
 
-pub const VERIFICATION_OUTDATED_AFTER_SCHEMA: Schema =
-    IntegerSchema::new("Days after that a verification becomes outdated. (0 is deprecated)'")
+pub const CLOUD_VERIFICATION_OUTDATED_AFTER_SCHEMA: Schema =
+    IntegerSchema::new("Days after which a cloud verification becomes outdated. (0 is deprecated)")
         .minimum(0)
         .schema();
 
 #[api(
     properties: {
         id: {
-            schema: JOB_ID_SCHEMA,
+            schema: CLOUD_JOB_ID_SCHEMA,
         },
         store: {
             schema: DATASTORE_SCHEMA,
         },
         "ignore-verified": {
             optional: true,
-            schema: IGNORE_VERIFIED_BACKUPS_SCHEMA,
+            schema: IGNORE_VERIFIED_CLOUD_BACKUPS_SCHEMA,
         },
         "outdated-after": {
             optional: true,
-            schema: VERIFICATION_OUTDATED_AFTER_SCHEMA,
+            schema: CLOUD_VERIFICATION_OUTDATED_AFTER_SCHEMA,
         },
         comment: {
             optional: true,
@@ -192,7 +192,7 @@ pub const VERIFICATION_OUTDATED_AFTER_SCHEMA: Schema =
         },
         schedule: {
             optional: true,
-            schema: VERIFICATION_SCHEDULE_SCHEMA,
+            schema: CLOUD_VERIFICATION_SCHEDULE_SCHEMA,
         },
         ns: {
             optional: true,
@@ -206,153 +206,15 @@ pub const VERIFICATION_OUTDATED_AFTER_SCHEMA: Schema =
 )]
 #[derive(Serialize, Deserialize, Updater, Clone, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-/// Verification Job
-pub struct VerificationJobConfig {
-    /// unique ID to address this job
+/// Cloud Verification Job
+pub struct CloudVerificationJobConfig {
+    /// Unique ID to address this job
     #[updater(skip)]
     pub id: String,
-    /// the datastore ID this verification job affects
+    /// The datastore ID this verification job affects
     pub store: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// if not set to false, check the age of the last snapshot verification to filter
-    /// out recent ones, depending on 'outdated_after' configuration.
-    pub ignore_verified: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Reverify snapshots after X days, never if 0. Ignored if 'ignore_verified' is false.
-    pub outdated_after: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub comment: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// when to schedule this job in calendar event notation
-    pub schedule: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    /// on which backup namespace to run the verification recursively
-    pub ns: Option<BackupNamespace>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    /// how deep the verify should go from the `ns` level downwards. Passing 0 verifies only the
-    /// snapshots on the same level as the passed `ns`, or the datastore root if none.
-    pub max_depth: Option<usize>,
-}
-
-impl VerificationJobConfig {
-    pub fn acl_path(&self) -> Vec<&str> {
-        match self.ns.as_ref() {
-            Some(ns) => ns.acl_path(&self.store),
-            None => vec!["datastore", &self.store],
-        }
-    }
-}
-
-#[api(
-    properties: {
-        config: {
-            type: VerificationJobConfig,
-        },
-        status: {
-            type: JobScheduleStatus,
-        },
-    },
-)]
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-/// Status of Verification Job
-pub struct VerificationJobStatus {
-    #[serde(flatten)]
-    pub config: VerificationJobConfig,
-    #[serde(flatten)]
-    pub status: JobScheduleStatus,
-}
-
-#[api(
-    properties: {
-        store: {
-           schema: DATASTORE_SCHEMA,
-        },
-        pool: {
-            schema: MEDIA_POOL_NAME_SCHEMA,
-        },
-        drive: {
-            schema: DRIVE_NAME_SCHEMA,
-        },
-        "eject-media": {
-            description: "Eject media upon job completion.",
-            type: bool,
-            optional: true,
-        },
-        "export-media-set": {
-            description: "Export media set upon job completion.",
-            type: bool,
-            optional: true,
-        },
-        "latest-only": {
-            description: "Backup latest snapshots only.",
-            type: bool,
-            optional: true,
-        },
-        "notify-user": {
-            optional: true,
-            type: Userid,
-        },
-        "group-filter": {
-            schema: GROUP_FILTER_LIST_SCHEMA,
-            optional: true,
-        },
-        ns: {
-            type: BackupNamespace,
-            optional: true,
-        },
-        "max-depth": {
-            schema: crate::NS_MAX_DEPTH_SCHEMA,
-            optional: true,
-        },
-    }
-)]
-#[derive(Serialize, Deserialize, Clone, Updater, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-/// Tape Backup Job Setup
-pub struct TapeBackupJobSetup {
-    pub store: String,
-    pub pool: String,
-    pub drive: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub eject_media: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub export_media_set: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latest_only: Option<bool>,
-    /// Send job email notification to this user
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub notify_user: Option<Userid>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_filter: Option<Vec<GroupFilter>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub ns: Option<BackupNamespace>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub max_depth: Option<usize>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Updater, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-/// Cloud Backup Job Setup, Added by SK
-pub struct CloudBackupJobSetup {
-    pub store: String,
-    pub pool: String,
-    pub drive: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub eject_media: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub export_media_set: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latest_only: Option<bool>,
-    /// Send job email notification to this user
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub notify_user: Option<Userid>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_filter: Option<Vec<GroupFilter>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub ns: Option<BackupNamespace>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub max_depth: Option<usize>,
+    ///
 }
 
 #[api(

@@ -11,157 +11,159 @@ use proxmox_schema::{
 
 use crate::{
     Authid, CryptMode, Fingerprint, GroupFilter, MaintenanceMode, Userid,
-    DATASTORE_NOTIFY_STRING_SCHEMA, GC_SCHEDULE_SCHEMA, PROXMOX_SAFE_ID_FORMAT,
+    CLOUD_DATASTORE_NOTIFY_STRING_SCHEMA, GC_SCHEDULE_SCHEMA, PROXMOX_SAFE_ID_FORMAT,
     PRUNE_SCHEDULE_SCHEMA, SHA256_HEX_REGEX, SINGLE_LINE_COMMENT_SCHEMA, UPID,
 };
 
 const_regex! {
-    pub BACKUP_NAMESPACE_REGEX = concat!(r"^", BACKUP_NS_RE!(), r"$");
+    pub CLOUD_BACKUP_NAMESPACE_REGEX = concat!(r"^", CLOUD_BACKUP_NS_RE!(), r"$");
 
-    pub BACKUP_TYPE_REGEX = concat!(r"^(", BACKUP_TYPE_RE!(), r")$");
+    pub CLOUD_BACKUP_TYPE_REGEX = concat!(r"^(", CLOUD_BACKUP_TYPE_RE!(), r")$");
 
-    pub BACKUP_ID_REGEX = concat!(r"^", BACKUP_ID_RE!(), r"$");
+    pub CLOUD_BACKUP_ID_REGEX = concat!(r"^", CLOUD_BACKUP_ID_RE!(), r"$");
 
-    pub BACKUP_DATE_REGEX = concat!(r"^", BACKUP_TIME_RE!() ,r"$");
+    pub CLOUD_BACKUP_DATE_REGEX = concat!(r"^", CLOUD_BACKUP_TIME_RE!(), r"$");
 
-    pub GROUP_PATH_REGEX = concat!(
-        r"^(", BACKUP_TYPE_RE!(), ")/",
-        r"(", BACKUP_ID_RE!(), r")$",
+    pub CLOUD_GROUP_PATH_REGEX = concat!(
+        r"^(", CLOUD_BACKUP_TYPE_RE!(), ")/",
+        r"(", CLOUD_BACKUP_ID_RE!(), r")$",
     );
 
-    pub BACKUP_FILE_REGEX = r"^.*\.([fd]idx|blob)$";
+    pub CLOUD_BACKUP_FILE_REGEX = r"^.*\.([fd]idx|blob)$";
 
-    pub SNAPSHOT_PATH_REGEX = concat!(r"^", SNAPSHOT_PATH_REGEX_STR!(), r"$");
-    pub GROUP_OR_SNAPSHOT_PATH_REGEX = concat!(r"^", GROUP_OR_SNAPSHOT_PATH_REGEX_STR!(), r"$");
+    pub CLOUD_SNAPSHOT_PATH_REGEX = concat!(r"^", CLOUD_SNAPSHOT_PATH_REGEX_STR!(), r"$");
+    pub CLOUD_GROUP_OR_SNAPSHOT_PATH_REGEX = concat!(r"^", CLOUD_GROUP_OR_SNAPSHOT_PATH_REGEX_STR!(), r"$");
 
-    pub DATASTORE_MAP_REGEX = concat!(r"^(?:", PROXMOX_SAFE_ID_REGEX_STR!(), r"=)?", PROXMOX_SAFE_ID_REGEX_STR!(), r"$");
+    pub CLOUD_DATASTORE_MAP_REGEX = concat!(r"^(?:", PROXMOX_SAFE_ID_REGEX_STR!(), r"=)?", PROXMOX_SAFE_ID_REGEX_STR!(), r"$");
 }
 
 pub const CHUNK_DIGEST_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&SHA256_HEX_REGEX);
 
-pub const DIR_NAME_SCHEMA: Schema = StringSchema::new("Directory name")
+pub const DIR_NAME_SCHEMA: Schema = StringSchema::new("Directory name for cloud backups")
     .min_length(1)
     .max_length(4096)
     .schema();
 
-pub const BACKUP_ARCHIVE_NAME_SCHEMA: Schema = StringSchema::new("Backup archive name.")
+pub const CLOUD_BACKUP_ARCHIVE_NAME_SCHEMA: Schema = StringSchema::new("Cloud backup archive name.")
     .format(&PROXMOX_SAFE_ID_FORMAT)
     .schema();
 
-pub const BACKUP_ID_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&BACKUP_ID_REGEX);
-pub const BACKUP_GROUP_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&GROUP_PATH_REGEX);
-pub const BACKUP_NAMESPACE_FORMAT: ApiStringFormat =
-    ApiStringFormat::Pattern(&BACKUP_NAMESPACE_REGEX);
+pub const CLOUD_BACKUP_ID_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&CLOUD_BACKUP_ID_REGEX);
+pub const CLOUD_BACKUP_GROUP_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&CLOUD_GROUP_PATH_REGEX);
+pub const CLOUD_BACKUP_NAMESPACE_FORMAT: ApiStringFormat =
+    ApiStringFormat::Pattern(&CLOUD_BACKUP_NAMESPACE_REGEX);
 
-pub const BACKUP_ID_SCHEMA: Schema = StringSchema::new("Backup ID.")
-    .format(&BACKUP_ID_FORMAT)
+pub const CLOUD_BACKUP_ID_SCHEMA: Schema = StringSchema::new("Cloud Backup ID.")
+    .format(&CLOUD_BACKUP_ID_FORMAT)
     .schema();
 
-pub const BACKUP_TYPE_SCHEMA: Schema = StringSchema::new("Backup type.")
+pub const CLOUD_BACKUP_TYPE_SCHEMA: Schema = StringSchema::new("Cloud Backup type.")
     .format(&ApiStringFormat::Enum(&[
         EnumEntry::new("vm", "Virtual Machine Backup"),
         EnumEntry::new("ct", "Container Backup"),
         EnumEntry::new("host", "Host Backup"),
+        EnumEntry::new("cloud", "Cloud Backup"),
     ]))
     .schema();
 
-pub const BACKUP_TIME_SCHEMA: Schema = IntegerSchema::new("Backup time (Unix epoch.)")
+pub const CLOUD_BACKUP_TIME_SCHEMA: Schema = IntegerSchema::new("Backup time (Unix epoch.)")
     .minimum(1)
     .schema();
 
-pub const BACKUP_GROUP_SCHEMA: Schema = StringSchema::new("Backup Group")
-    .format(&BACKUP_GROUP_FORMAT)
+pub const CLOUD_BACKUP_GROUP_SCHEMA: Schema = StringSchema::new("Cloud Backup Group")
+    .format(&CLOUD_BACKUP_GROUP_FORMAT)
     .schema();
 
-/// The maximal, inclusive depth for namespaces from the root ns downwards
+/// The maximal, inclusive depth for namespaces from the root namespace downwards
 ///
-/// The datastore root name space is at depth zero (0), so we have in total eight (8) levels
-pub const MAX_NAMESPACE_DEPTH: usize = 7;
-pub const MAX_BACKUP_NAMESPACE_LENGTH: usize = 32 * 8; // 256
-pub const BACKUP_NAMESPACE_SCHEMA: Schema = StringSchema::new("Namespace.")
-    .format(&BACKUP_NAMESPACE_FORMAT)
-    .max_length(MAX_BACKUP_NAMESPACE_LENGTH) // 256
+/// The cloud storage root namespace is at depth zero (0), so we have in total eight (8) levels
+pub const MAX_CLOUD_NAMESPACE_DEPTH: usize = 7;
+pub const MAX_CLOUD_BACKUP_NAMESPACE_LENGTH: usize = 32 * 8; // 256
+pub const CLOUD_BACKUP_NAMESPACE_SCHEMA: Schema = StringSchema::new("Cloud Namespace.")
+    .format(&CLOUD_BACKUP_NAMESPACE_FORMAT)
+    .max_length(MAX_CLOUD_BACKUP_NAMESPACE_LENGTH) // 256
     .schema();
 
 pub const NS_MAX_DEPTH_SCHEMA: Schema =
     IntegerSchema::new("How many levels of namespaces should be operated on (0 == no recursion)")
         .minimum(0)
-        .maximum(MAX_NAMESPACE_DEPTH as isize)
-        .default(MAX_NAMESPACE_DEPTH as isize)
+        .maximum(MAX_CLOUD_NAMESPACE_DEPTH as isize)
+        .default(MAX_CLOUD_NAMESPACE_DEPTH as isize)
         .schema();
 
 pub const NS_MAX_DEPTH_REDUCED_SCHEMA: Schema =
 IntegerSchema::new("How many levels of namespaces should be operated on (0 == no recursion, empty == automatic full recursion, namespace depths reduce maximum allowed value)")
     .minimum(0)
-    .maximum(MAX_NAMESPACE_DEPTH as isize)
+    .maximum(MAX_CLOUD_NAMESPACE_DEPTH as isize)
     .schema();
 
-pub const DATASTORE_SCHEMA: Schema = StringSchema::new("Datastore name.")
+
+    pub const CLOUD_DATASTORE_SCHEMA: Schema = StringSchema::new("Cloud datastore name.")
     .format(&PROXMOX_SAFE_ID_FORMAT)
     .min_length(3)
     .max_length(32)
     .schema();
 
-pub const CHUNK_DIGEST_SCHEMA: Schema = StringSchema::new("Chunk digest (SHA256).")
+pub const CLOUD_CHUNK_DIGEST_SCHEMA: Schema = StringSchema::new("Chunk digest (SHA256) for cloud backups.")
     .format(&CHUNK_DIGEST_FORMAT)
     .schema();
 
-pub const DATASTORE_MAP_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&DATASTORE_MAP_REGEX);
+pub const CLOUD_DATASTORE_MAP_FORMAT: ApiStringFormat = ApiStringFormat::Pattern(&CLOUD_DATASTORE_MAP_REGEX);
 
-pub const DATASTORE_MAP_SCHEMA: Schema = StringSchema::new("Datastore mapping.")
-    .format(&DATASTORE_MAP_FORMAT)
+pub const CLOUD_DATASTORE_MAP_SCHEMA: Schema = StringSchema::new("Cloud datastore mapping.")
+    .format(&CLOUD_DATASTORE_MAP_FORMAT)
     .min_length(3)
     .max_length(65)
     .type_text("(<source>=)?<target>")
     .schema();
 
-pub const DATASTORE_MAP_ARRAY_SCHEMA: Schema =
-    ArraySchema::new("Datastore mapping list.", &DATASTORE_MAP_SCHEMA).schema();
+pub const CLOUD_DATASTORE_MAP_ARRAY_SCHEMA: Schema =
+    ArraySchema::new("Cloud datastore mapping list.", &CLOUD_DATASTORE_MAP_SCHEMA).schema();
 
-pub const DATASTORE_MAP_LIST_SCHEMA: Schema = StringSchema::new(
-    "A list of Datastore mappings (or single datastore), comma separated. \
-    For example 'a=b,e' maps the source datastore 'a' to target 'b and \
+pub const CLOUD_DATASTORE_MAP_LIST_SCHEMA: Schema = StringSchema::new(
+    "A list of cloud datastore mappings (or a single datastore), comma separated. \
+    For example 'a=b,e' maps the source datastore 'a' to target 'b' and \
     all other sources to the default 'e'. If no default is given, only the \
     specified sources are mapped.",
 )
 .format(&ApiStringFormat::PropertyString(
-    &DATASTORE_MAP_ARRAY_SCHEMA,
+    &CLOUD_DATASTORE_MAP_ARRAY_SCHEMA,
 ))
 .schema();
 
-pub const PRUNE_SCHEMA_KEEP_DAILY: Schema = IntegerSchema::new("Number of daily backups to keep.")
+pub const CLOUD_PRUNE_SCHEMA_KEEP_DAILY: Schema = IntegerSchema::new("Number of daily cloud backups to keep.")
     .minimum(1)
     .schema();
 
-pub const PRUNE_SCHEMA_KEEP_HOURLY: Schema =
-    IntegerSchema::new("Number of hourly backups to keep.")
+pub const CLOUD_PRUNE_SCHEMA_KEEP_HOURLY: Schema =
+    IntegerSchema::new("Number of hourly cloud backups to keep.")
         .minimum(1)
         .schema();
 
-pub const PRUNE_SCHEMA_KEEP_LAST: Schema = IntegerSchema::new("Number of backups to keep.")
+pub const CLOUD_PRUNE_SCHEMA_KEEP_LAST: Schema = IntegerSchema::new("Number of cloud backups to keep.")
     .minimum(1)
     .schema();
 
-pub const PRUNE_SCHEMA_KEEP_MONTHLY: Schema =
-    IntegerSchema::new("Number of monthly backups to keep.")
+pub const CLOUD_PRUNE_SCHEMA_KEEP_MONTHLY: Schema =
+    IntegerSchema::new("Number of monthly cloud backups to keep.")
         .minimum(1)
         .schema();
 
-pub const PRUNE_SCHEMA_KEEP_WEEKLY: Schema =
-    IntegerSchema::new("Number of weekly backups to keep.")
+pub const CLOUD_PRUNE_SCHEMA_KEEP_WEEKLY: Schema =
+    IntegerSchema::new("Number of weekly cloud backups to keep.")
         .minimum(1)
         .schema();
 
-pub const PRUNE_SCHEMA_KEEP_YEARLY: Schema =
-    IntegerSchema::new("Number of yearly backups to keep.")
+pub const CLOUD_PRUNE_SCHEMA_KEEP_YEARLY: Schema =
+    IntegerSchema::new("Number of yearly cloud backups to keep.")
         .minimum(1)
         .schema();
 
 #[api]
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-/// The order to sort chunks by
-pub enum ChunkOrder {
+/// The order to sort chunks by in cloud backup.
+pub enum CloudChunkOrder {
     /// Iterate chunks in the index order
     None,
     /// Iterate chunks in inode order
@@ -172,25 +174,25 @@ pub enum ChunkOrder {
 #[api]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-/// The level of syncing that is done when writing into a datastore.
-pub enum DatastoreFSyncLevel {
+/// The level of syncing that is done when writing into a cloud datastore.
+pub enum CloudDatastoreFSyncLevel {
     /// No special fsync or syncfs calls are triggered. The system default dirty write back
-    /// mechanism ensures that data gets is flushed eventually via the `dirty_writeback_centisecs`
+    /// mechanism ensures that data is flushed eventually via the `dirty_writeback_centisecs`
     /// and `dirty_expire_centisecs` kernel sysctls, defaulting to ~ 30s.
     ///
     /// This mode provides generally the best performance, as all write back can happen async,
     /// which reduces IO pressure.
-    /// But it may cause losing data on powerloss or system crash without any uninterruptible power
+    /// But it may cause losing data on power loss or system crash without any uninterruptible power
     /// supply.
     None,
-    /// Triggers a fsync after writing any chunk on the datastore. While this can slow down
+    /// Triggers a fsync after writing any chunk on the cloud datastore. While this can slow down
     /// backups significantly, depending on the underlying file system and storage used, it
     /// will ensure fine-grained consistency. Depending on the exact setup, there might be no
     /// benefits over the file system level sync, so if the setup allows it, you should prefer
-    /// that one. Despite the possible negative impact in performance, it's the most consistent
+    /// that one. Despite the possible negative impact on performance, it's the most consistent
     /// mode.
     File,
-    /// Trigger a filesystem wide sync after all backup data got written but before finishing the
+    /// Trigger a filesystem-wide sync after all backup data has been written but before finishing the
     /// task. This allows that every finished backup is fully written back to storage
     /// while reducing the impact on many file systems in contrast to the file level sync.
     /// Depending on the setup, it might have a negative impact on unrelated write operations
@@ -199,6 +201,7 @@ pub enum DatastoreFSyncLevel {
     #[default]
     Filesystem,
 }
+
 
 #[api(
     properties: {

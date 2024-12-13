@@ -2,18 +2,18 @@ use serde::{Deserialize, Serialize};
 
 use proxmox_schema::api;
 
-use crate::CERT_FINGERPRINT_SHA256_SCHEMA;
+use crate::CLOUD_CERT_FINGERPRINT_SHA256_SCHEMA;
 
 #[api(default: "scrypt")]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-/// Key derivation function for password protected encryption keys.
+/// Key derivation function for password-protected encryption keys in cloud backups.
 pub enum Kdf {
     /// Do not encrypt the key.
     None,
-    /// Encrypt they key with a password using SCrypt.
+    /// Encrypt the key with a password using SCrypt.
     Scrypt,
-    /// Encrtypt the Key with a password using PBKDF2
+    /// Encrypt the key with a password using PBKDF2.
     PBKDF2,
 }
 
@@ -30,15 +30,15 @@ impl Default for Kdf {
             type: Kdf,
         },
         fingerprint: {
-            schema: CERT_FINGERPRINT_SHA256_SCHEMA,
+            schema: CLOUD_CERT_FINGERPRINT_SHA256_SCHEMA,
             optional: true,
         },
     },
 )]
 #[derive(Deserialize, Serialize)]
-/// Encryption Key Information
-pub struct KeyInfo {
-    /// Path to key (if stored in a file)
+/// Cloud Encryption Key Information
+pub struct CloudKeyInfo {
+    /// Path to the key file (if stored in a file)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     pub kdf: Kdf,
