@@ -8,19 +8,19 @@ use proxmox_schema::api;
 #[api(default: "encrypt")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-/// Defines whether data is encrypted (using an AEAD cipher), only signed, or neither.
+/// Defines whether cloud backup data is encrypted (using an AEAD cipher), only signed, or neither.
 pub enum CryptMode {
-    /// Don't encrypt.
+    /// No encryption for cloud backups.
     None,
-    /// Encrypt.
+    /// Encrypt cloud backup data.
     Encrypt,
-    /// Only sign.
+    /// Only sign the cloud backup data.
     SignOnly,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Deserialize, Serialize)]
 #[serde(transparent)]
-/// 32-byte fingerprint, usually calculated with SHA256.
+/// 32-byte fingerprint for cloud backup, usually calculated with SHA256.
 pub struct Fingerprint {
     #[serde(with = "bytes_as_fingerprint")]
     bytes: [u8; 32],
@@ -38,7 +38,7 @@ impl Fingerprint {
     }
 }
 
-/// Display as short key ID
+/// Display as short key ID for cloud backup identification
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", as_fingerprint(&self.bytes[0..8]))
@@ -83,8 +83,6 @@ pub mod bytes_as_fingerprint {
     where
         D: Deserializer<'de>,
     {
-        // TODO: more efficiently implement with a Visitor implementing visit_str using split() and
-        // hex::decode by-byte
         let mut s = String::deserialize(deserializer)?;
         s.retain(|c| c != ':');
         let mut out = MaybeUninit::<[u8; 32]>::uninit();

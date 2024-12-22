@@ -112,14 +112,13 @@ pub struct LdapRealmConfig {
     properties: {
         "remove-vanished": {
             optional: true,
-            schema: REMOVE_VANISHED_SCHEMA,
+            schema: CLOUD_REMOVE_VANISHED_SCHEMA,
         },
     },
-
 )]
 #[derive(Serialize, Deserialize, Updater, Default, Debug)]
 #[serde(rename_all = "kebab-case")]
-/// Default options for LDAP synchronization runs
+/// Default options for cloud backup synchronization runs
 pub struct SyncDefaultsOptions {
     /// How to handle vanished properties/users
     pub remove_vanished: Option<String>,
@@ -130,8 +129,8 @@ pub struct SyncDefaultsOptions {
 #[api()]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-/// remove-vanished options
-pub enum RemoveVanished {
+/// Options for handling vanished items
+pub enum CloudRemoveVanished {
     /// Delete ACLs for vanished users
     Acl,
     /// Remove vanished users
@@ -140,28 +139,24 @@ pub enum RemoveVanished {
     Properties,
 }
 
-pub const LDAP_DOMAIN_SCHEMA: Schema = StringSchema::new("LDAP Domain").schema();
+pub const CLOUD_DOMAIN_SCHEMA: Schema = StringSchema::new("Cloud Domain").schema();
 
-pub const SYNC_DEFAULTS_STRING_SCHEMA: Schema = StringSchema::new("sync defaults options")
+pub const SYNC_DEFAULTS_STRING_SCHEMA: Schema = StringSchema::new("Sync defaults options")
     .format(&ApiStringFormat::PropertyString(
         &SyncDefaultsOptions::API_SCHEMA,
     ))
     .schema();
 
-const REMOVE_VANISHED_DESCRIPTION: &str =
-    "A semicolon-seperated list of things to remove when they or the user \
-vanishes during user synchronization. The following values are possible: ``entry`` removes the \
-user when not returned from the sync; ``properties`` removes any  \
-properties on existing user that do not appear in the source. \
-``acl`` removes ACLs when the user is not returned from the sync.";
+const CLOUD_REMOVE_VANISHED_DESCRIPTION: &str =
+    "A semicolon-separated list of actions to take when users or properties vanish during synchronization. The following values are possible: ``entry`` removes the user when not returned from the sync; ``properties`` removes any properties on existing users that do not appear in the source. ``acl`` removes ACLs when the user is not returned from the sync.";
 
-pub const REMOVE_VANISHED_SCHEMA: Schema = StringSchema::new(REMOVE_VANISHED_DESCRIPTION)
-    .format(&ApiStringFormat::PropertyString(&REMOVE_VANISHED_ARRAY))
+pub const CLOUD_REMOVE_VANISHED_SCHEMA: Schema = StringSchema::new(CLOUD_REMOVE_VANISHED_DESCRIPTION)
+    .format(&ApiStringFormat::PropertyString(&CLOUD_REMOVE_VANISHED_ARRAY))
     .schema();
 
-pub const REMOVE_VANISHED_ARRAY: Schema = ArraySchema::new(
+pub const CLOUD_REMOVE_VANISHED_ARRAY: Schema = ArraySchema::new(
     "Array of remove-vanished options",
-    &RemoveVanished::API_SCHEMA,
+    &CloudRemoveVanished::API_SCHEMA,
 )
 .min_length(1)
 .schema();
@@ -169,19 +164,19 @@ pub const REMOVE_VANISHED_ARRAY: Schema = ArraySchema::new(
 #[api()]
 #[derive(Serialize, Deserialize, Updater, Default, Debug)]
 #[serde(rename_all = "kebab-case")]
-/// Determine which LDAP attributes should be synced to which user attributes
+/// Determine which cloud attributes should be synced to which user attributes
 pub struct SyncAttributes {
-    /// Name of the LDAP attribute containing the user's email address
+    /// Name of the cloud attribute containing the user's email address
     pub email: Option<String>,
-    /// Name of the LDAP attribute containing the user's first name
+    /// Name of the cloud attribute containing the user's first name
     pub firstname: Option<String>,
-    /// Name of the LDAP attribute containing the user's last name
+    /// Name of the cloud attribute containing the user's last name
     pub lastname: Option<String>,
 }
 
 const SYNC_ATTRIBUTES_TEXT: &str = "Comma-separated list of key=value pairs for specifying \
-which LDAP attributes map to which PBS user field. For example, \
-to map the LDAP attribute ``mail`` to PBS's ``email``, write \
+which cloud attributes map to which user fields. For example, \
+to map the cloud attribute ``mail`` to the user's ``email``, write \
 ``email=mail``.";
 
 pub const SYNC_ATTRIBUTES_SCHEMA: Schema = StringSchema::new(SYNC_ATTRIBUTES_TEXT)
@@ -192,15 +187,15 @@ pub const SYNC_ATTRIBUTES_SCHEMA: Schema = StringSchema::new(SYNC_ATTRIBUTES_TEX
 
 pub const USER_CLASSES_ARRAY: Schema = ArraySchema::new(
     "Array of user classes",
-    &StringSchema::new("user class").schema(),
+    &StringSchema::new("User class").schema(),
 )
 .min_length(1)
 .schema();
 
 const USER_CLASSES_TEXT: &str = "Comma-separated list of allowed objectClass values for \
 user synchronization. For instance, if ``user-classes`` is set to ``person,user``, \
-then user synchronization will consider all LDAP entities \
-where ``objectClass: person`` `or` ``objectClass: user``.";
+then synchronization will consider all entities \
+where ``objectClass: person`` or ``objectClass: user``.";
 
 pub const USER_CLASSES_SCHEMA: Schema = StringSchema::new(USER_CLASSES_TEXT)
     .format(&ApiStringFormat::PropertyString(&USER_CLASSES_ARRAY))
