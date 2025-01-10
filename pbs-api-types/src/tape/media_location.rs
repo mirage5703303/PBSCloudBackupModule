@@ -2,79 +2,78 @@ use anyhow::{bail, Error};
 
 use proxmox_schema::{ApiStringFormat, Schema, StringSchema};
 
-use crate::{CHANGER_NAME_SCHEMA, PROXMOX_SAFE_ID_FORMAT};
+use crate::{CLOUD_STORAGE_NAME_SCHEMA, PROXMOX_SAFE_ID_FORMAT};
 
-pub const VAULT_NAME_SCHEMA: Schema = StringSchema::new("Vault name.")
+pub const BUCKET_NAME_SCHEMA: Schema = StringSchema::new("Bucket name.")
     .format(&PROXMOX_SAFE_ID_FORMAT)
     .min_length(3)
-    .max_length(32)
+    .max_length(63)
     .schema();
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-/// Media location
-pub enum MediaLocation {
-    /// Ready for use (inside tape library)
-    Online(String),
-    /// Local available, but need to be mounted (insert into tape
-    /// drive)
-    Offline,
-    /// Media is inside a Vault
+/// Cloud backup location
+pub enum BackupLocation {
+    /// Data is available in a cloud storage bucket
+    Cloud(String),
+    /// Local storage, available for upload
+    Local,
+    /// Archived in a specific storage vault
     Vault(String),
 }
 
-proxmox_serde::forward_deserialize_to_from_str!(MediaLocation);
-proxmox_serde::forward_serialize_to_display!(MediaLocation);
+proxmox_serde::forward_deserialize_to_from_str!(BackupLocation);
+proxmox_serde::forward_serialize_to_display!(BackupLocation);
 
-impl proxmox_schema::ApiType for MediaLocation {
+impl proxmox_schema::ApiType for BackupLocation {
     const API_SCHEMA: Schema = StringSchema::new(
-        "Media location (e.g. 'offline', 'online-<changer_name>', 'vault-<vault_name>')",
+        "Backup location (e.g. 'local', 'cloud-<bucket_name>', 'vault-<vault_name>')",
     )
     .format(&ApiStringFormat::VerifyFn(|text| {
-        let location: MediaLocation = text.parse()?;
+        let location: BackupLocation = text.parse()?;
         match location {
-            MediaLocation::Online(ref changer) => {
-                CHANGER_NAME_SCHEMA.parse_simple_value(changer)?;
+            BackupLocation::Cloud(ref bucket) => {
+                BUCKET_NAME_SCHEMA.parse_simple_value(bucket)?;
             }
-            MediaLocation::Vault(ref vault) => {
+            BackupLocation::Vault(ref vault) => {
                 VAULT_NAME_SCHEMA.parse_simple_value(vault)?;
             }
-            MediaLocation::Offline => { /* OK */ }
+            BackupLocation::Local => { /* OK */ }
         }
         Ok(())
     }))
     .schema();
 }
 
-impl std::fmt::Display for MediaLocation {
+impl std::fmt::Display for BackupLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MediaLocation::Offline => {
-                write!(f, "offline")
+            BackupLocation::Local => {
+                write!(f, "local")
             }
-            MediaLocation::Online(changer) => {
-                write!(f, "online-{}", changer)
+            BackupLocation::Cloud(bucket) => {
+                write!(f, "cloud-{}", bucket)
             }
-            MediaLocation::Vault(vault) => {
+            BackupLocation::Vault(vault) => {
                 write!(f, "vault-{}", vault)
             }
         }
     }
 }
 
-impl std::str::FromStr for MediaLocation {
+impl std::str::FromStr for BackupLocation {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "offline" {
-            return Ok(MediaLocation::Offline);
+        if s == "local" {
+            return Ok(BackupLocation::Local);
         }
-        if let Some(changer) = s.strip_prefix("online-") {
-            return Ok(MediaLocation::Online(changer.to_string()));
+        if let Some(bucket) = s.strip_prefix("cloud-") {
+            return Ok(BackupLocation::Cloud(bucket.to_string()));
         }
         if let Some(vault) = s.strip_prefix("vault-") {
-            return Ok(MediaLocation::Vault(vault.to_string()));
+            return Ok(BackupLocation::Vault(vault.to_string()));
         }
 
-        bail!("MediaLocation parse error");
+        bail!("BackupLocation parse error");
     }
 }
